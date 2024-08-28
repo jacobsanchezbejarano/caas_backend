@@ -1,12 +1,15 @@
 <?php
-
-class Usuario
+require_once 'class.sensitive.php';
+require_once '../../encryption.php';
+class Usuario extends Sensitive
 {
     private $con;
+    private $key;
 
     public function __construct($con)
     {
         $this->con = $con;
+        $this->key = ENCRYPTION_KEY;
     }
 
     public function crearUsuario($nombre, $apellido, $email, $password)
@@ -19,6 +22,9 @@ class Usuario
             return ['success' => false, 'errors' => $errores_password];
         }
 
+        $nombre_encriptado = $this->encriptar($nombre, $this->key);
+        $apellido_encriptado = $this->encriptar($apellido, $this->key);
+
         // Hashear la contraseña
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
@@ -29,7 +35,7 @@ class Usuario
         // Consulta de inserción
         $query = "INSERT INTO usuarios (usuarios_id, usuarios_nombre, usuarios_apellido, usuarios_email, usuarios_password, usuarios_intentosFallidos, usuarios_bloqueado) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->con->prepare($query);
-        $stmt->bind_param("sssssii", $id, $nombre, $apellido, $email, $hashedPassword, $intentosFallidos, $bloqueado);
+        $stmt->bind_param("sssssii", $id, $nombre_encriptado, $apellido_encriptado, $email, $hashedPassword, $intentosFallidos, $bloqueado);
 
         // Ejecutar la consulta y devolver respuesta
         if ($stmt->execute()) {

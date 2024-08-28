@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS usuarios (
     usuarios_id VARCHAR(32) PRIMARY KEY,
-    usuarios_nombre VARCHAR(50) NOT NULL,
-    usuarios_apellido VARCHAR(100) NOT NULL,
+    usuarios_nombre VARCHAR(255) NOT NULL,
+    usuarios_apellido VARCHAR(255) NOT NULL,
     usuarios_email VARCHAR(100) NOT NULL UNIQUE,
     usuarios_password VARCHAR(255) NOT NULL,
     usuarios_fechaRegistro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
