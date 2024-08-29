@@ -1,6 +1,7 @@
 <?php
 include '../../../sesion.php';
 include '../../classes/usuarios/class.usuario.php';
+require_once '../../encryption.php';
 
 // Obtener el origen de la solicitud
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -25,4 +26,17 @@ if ($option == 'crearUsuario') {
     $resultado = $Usuario->crearUsuario($nombre, $apellido, $email, $password);
 
     echo json_encode($resultado);
+}
+
+if ($option == 'recuperarUsuario') {
+    $email = $_POST['email'];
+
+    // Validar el correo electrónico
+    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['status' => 'success', 'message' => 'Enlace de recuperación enviado.']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Correo electrónico no encontrado.']);
+    }
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Correo electrónico inválido.']);
 }
