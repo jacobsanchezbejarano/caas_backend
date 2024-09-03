@@ -6,11 +6,11 @@ class Usuario extends Sensitive
     private $key;
     private $host;
 
-    public function __construct($con)
+    public function __construct($con, $host)
     {
         $this->con = $con;
         $this->key = ENCRYPTION_KEY;
-        $this->host = "http://localhost";
+        $this->host = $host;
     }
 
     public function verUsuarios()

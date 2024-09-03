@@ -13,7 +13,7 @@ if (in_array($origin, ALLOWED_HOSTS)) {
     header("Access-Control-Allow-Headers: Content-Type, Authorization");
 }
 
-$Usuario = new Usuario($con);
+$Usuario = new Usuario($con, HOST);
 
 $option = isset($_POST['option']) ? $_POST['option'] : '';
 
