@@ -1,13 +1,13 @@
 <?php
 
-function obtenerTodosLosUsuarios()
+function obtenerTodosLosUsuariosDePago()
 {
     return [];
 }
 
 function actualizarTablasTodosLosUsuarios($tabla, $nombre_campo, $valores)
 {
-    $nombres_usuario = obtenerTodosLosUsuarios();
+    $nombres_usuario = obtenerTodosLosUsuariosDePago();
 
     foreach ($nombres_usuario as $usuario) {
         // Consulta para verificar si la columna existe
