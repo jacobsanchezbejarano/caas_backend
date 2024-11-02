@@ -13,9 +13,6 @@ class Cuentas
 
     public function crearLibroDiario($usuarios_id)
     {
-        // Asegúrate de que el $usuarios_id sea seguro para usar en la consulta SQL
-        $usuarios_id = (int)$usuarios_id;
-
         // Consulta SQL para crear la tabla librodiario
         $sqlLibroDiario = "CREATE TABLE IF NOT EXISTS librodiario$usuarios_id (
             librodiario_id INT(11) AUTO_INCREMENT PRIMARY KEY,
@@ -38,27 +35,26 @@ class Cuentas
 
         // Ejecutar las consultas SQL
         $conn = $this->con; // Método que retorna la conexión a la base de datos
+        $mensaje = "";
 
         if ($conn->query($sqlLibroDiario) === TRUE) {
-            echo "Tabla librodiario$usuarios_id creada con éxito.";
+            $mensaje .= "Tabla librodiario$usuarios_id creada con éxito.";
         } else {
-            echo "Error al crear la tabla librodiario$usuarios_id: " . $conn->error;
+            $mensaje .= "Error al crear la tabla librodiario$usuarios_id: " . $conn->error;
         }
 
         if ($conn->query($sqlPlanDeCuentas) === TRUE) {
-            echo "Tabla plandecuentas$usuarios_id creada con éxito.";
+            $mensaje .= "Tabla plandecuentas$usuarios_id creada con éxito.";
         } else {
-            echo "Error al crear la tabla plandecuentas$usuarios_id: " . $conn->error;
+            $mensaje .= "Error al crear la tabla plandecuentas$usuarios_id: " . $conn->error;
         }
-
-        // Cerrar la conexión
-        $conn->close();
+        return $mensaje;
     }
 
     public function dummyCuentas($usuarios_id)
     {
         // Consulta SQL para insertar datos en la tabla plandecuentas
-        $sqlInsertCuentas = "INSERT INTO plandecuentas$usuarios_id (plandecuentas_codigo, plandecuentas_nombre, plandecuentas_tipo, plandecuentas_presupuesto) VALUES
+        $sqlInsertCuentas = "INSERT INTO plandecuentas$usuarios_id (plandecuentas_id, plandecuentas_nombre, plandecuentas_FijoVariable, plandecuentas_presupuesto) VALUES
                             ('400001', 'Ventas', '', 0.000),
                             ('400002', 'Sueldo', '', 0.000),
                             ('400003', 'Intereses Ganados', '', 0.000),
@@ -75,10 +71,256 @@ class Cuentas
                             ('100002', 'Banco', '', 0.000)";
 
         // Ejecutar la consulta para insertar los datos
-        if ($this->con->query($sqlInsertCuentas) === TRUE) {
-            echo "Records inserted successfully";
+        $mensaje = "";
+        try {
+            if ($this->con->query($sqlInsertCuentas) === TRUE) {
+                $mensaje .= "Records inserted successfully";
+            } else {
+                $mensaje .= "Error inserting records: " . $this->con->error;
+            }
+        } catch (Exception $e) {
+            $mensaje .= "Error inserting records: " . $this->con->error;
+        }
+
+
+        return $mensaje;
+    }
+
+
+
+    public function obtenerUsuarioId($email)
+    {
+        $id = null;
+        $stmt = $this->con->prepare("SELECT usuarios_id FROM usuarios WHERE usuarios_email = ?");
+        $stmt->bind_param('s', $email);
+        $stmt->execute();
+        $stmt->bind_result($id);
+
+        while ($stmt->fetch()) {
+            return $id;
+        }
+    }
+
+    public function obtenerCuentasClasificadas($usuarios_id)
+    {
+        $mensaje = "";
+        $mensaje .= $this->crearLibroDiario($usuarios_id);
+        $mensaje .= $this->dummyCuentas($usuarios_id);
+        $code = null;
+        $nombreCuenta = null;
+        $obtenerAllCuentas = "SELECT plandecuentas_id, plandecuentas_nombre FROM plandecuentas$usuarios_id ORDER BY plandecuentas_id";
+
+        $stmt = $this->con->query($obtenerAllCuentas);
+
+        while ($row = $stmt->fetch_assoc()) {
+            $code = $row['plandecuentas_id'];
+            $nombreCuenta = $row['plandecuentas_nombre'];
+
+            switch ($code[0]) {
+                case 1:
+                    $tipo = 'Activo';
+                    break;
+                case 2:
+                    $tipo = 'Pasivo';
+                    break;
+                case 3:
+                    $tipo = 'Patrimonio';
+                    break;
+                case 4:
+                    $tipo = 'Ingreso';
+                    break;
+                case 5:
+                    $tipo = 'Costo';
+                    break;
+                case 6:
+                    $tipo = 'Egreso';
+                    break;
+            }
+            $cuentas[$tipo][] = [
+                'code' => $code,
+                'nombreCuenta' => $nombreCuenta,
+            ];
+        }
+
+        // $stmt->close();
+
+        if (empty($cuentas)) {
+            return [
+                'status' => 'error',
+                'message' => 'No se encontraron cuentas.'
+            ];
         } else {
-            echo "Error inserting records: " . $this->con->error;
+
+            $allActivos = $cuentas['Activo'] ?? [];
+            $allPasivos = $cuentas['Pasivo'] ?? [];
+            $allPatrimonio = $cuentas['Patrimonio'] ?? [];
+            $allIngresos = $cuentas['Ingreso'] ?? [];
+            $allCostos = $cuentas['Costo'] ?? [];
+            $allEgresos = $cuentas['Egreso'] ?? [];
+
+            $cuentas = [];
+            $cuentas['Activos'] = $allActivos == [] ? [] : $this->clasificarActivos($allActivos);
+            $cuentas['Pasivos'] = $allPasivos == [] ? [] : $this->clasificarPasivos($allPasivos);
+            $cuentas['Patrimonio'] = $allPatrimonio == [] ? [] : $this->clasificarPatrimonio($allPatrimonio);
+            $cuentas['Ingresos'] = $allIngresos == [] ? [] : $this->clasificarIngresos($allIngresos);
+            $cuentas['Costos'] = $allCostos == [] ? [] : $this->$allCostos;
+            $cuentas['Egresos'] = $allEgresos == [] ? [] : $this->clasificarEgresos($allEgresos);
+
+            return [
+                'status' => 'success',
+                'mensaje' => $mensaje,
+                'cuentas' => $cuentas
+            ];
+        }
+    }
+
+    public function clasificarActivos($allActivos)
+    {
+        $activos = [];
+        foreach ($allActivos as $activo) {
+            $subtipo = 'Undefined';
+            switch ($activo['code'][0] . $activo['code'][1]) {
+                case 10:
+                    $subtipo = 'AC Disponibles';
+                    break;
+                case 11:
+                    $subtipo = 'AC Inversiones Temporales';
+                    break;
+                case 12:
+                    $subtipo = 'AC Exigibles';
+                    break;
+                case 13:
+                    $subtipo = 'AC Realizables';
+                    break;
+                case 14:
+                    $subtipo = 'AC Diferidos';
+                    break;
+                case 15:
+                    $subtipo = 'ANC Exigibles>1año';
+                    break;
+                case 16:
+                    $subtipo = 'ANC Inversiones permanentes';
+                    break;
+                case 17:
+                    $subtipo = 'ANC Bienes de Uso';
+                    break;
+                case 18:
+                    $subtipo = 'ANC Intangibles';
+                    break;
+                case 19:
+                    $subtipo = 'ANC Gastos Dieferidos>1Año';
+                    break;
+            }
+            $activos[$subtipo][] = $activo;
+        }
+        if (empty($activos)) {
+            return [];
+        } else {
+            return $activos;
+        }
+    }
+    public function clasificarPasivos($allPasivos)
+    {
+        $pasivos = [];
+        foreach ($allPasivos as $pasivo) {
+            $prefix = $pasivo['code'][0] . $pasivo['code'][1];
+            if ($prefix >= 20 && $prefix < 25) $prefix = 20;
+            if ($prefix >= 25 && $prefix < 30) $prefix = 25;
+            $subtipo = 'Undefined';
+            switch ($prefix) {
+                case 20:
+                    $subtipo = 'Pasivos corrientes';
+                    break;
+                case 25:
+                    $subtipo = 'Pasivos no corrientes';
+                    break;
+            }
+            $pasivos[$subtipo][] = $pasivo;
+        }
+        if (empty($pasivos)) {
+            return [];
+        } else {
+            return $pasivos;
+        }
+    }
+    public function clasificarPatrimonio($allPatrimonio)
+    {
+        $patrimonioCuentas = [];
+        foreach ($allPatrimonio as $patrimonio) {
+            $prefix = $patrimonio['code'][0] . $patrimonio['code'][1] . $patrimonio['code'][2];
+            if ($prefix >= 300 && $prefix < 325) $prefix = 300;
+            if ($prefix >= 325 && $prefix < 350) $prefix = 325;
+            if ($prefix >= 350 && $prefix < 375) $prefix = 350;
+            if ($prefix >= 375 && $prefix < 400) $prefix = 375;
+            $subtipo = 'Undefined';
+            switch ($prefix) {
+                case 300:
+                    $subtipo = 'Capital';
+                    break;
+                case 325:
+                    $subtipo = 'Resultados';
+                    break;
+                case 350:
+                    $subtipo = 'Reservas';
+                    break;
+                case 375:
+                    $subtipo = 'Ajustes';
+                    break;
+            }
+            $patrimonioCuentas[$subtipo][] = $patrimonio;
+        }
+        if (empty($patrimonioCuentas)) {
+            return [];
+        } else {
+            return $patrimonioCuentas;
+        }
+    }
+    public function clasificarIngresos($allIngresos)
+    {
+        $ingresos = [];
+        foreach ($allIngresos as $ingreso) {
+            $prefix = $ingreso['code'][0] . $ingreso['code'][1];
+            if ($prefix >= 40 && $prefix < 46) $prefix = 40;
+            if ($prefix >= 46 && $prefix < 50) $prefix = 46;
+            $subtipo = 'Undefined';
+            switch ($prefix) {
+                case 40:
+                    $subtipo = 'Ingresos';
+                    break;
+                case 46:
+                    $subtipo = 'Ingresos Extraordinarios';
+                    break;
+            }
+            $ingresos[$subtipo][] = $ingreso;
+        }
+        if (empty($ingresos)) {
+            return [];
+        } else {
+            return $ingresos;
+        }
+    }
+    public function clasificarEgresos($allEgresos)
+    {
+        $egresos = [];
+        foreach ($allEgresos as $egreso) {
+            $prefix = $egreso['code'][0] . $egreso['code'][1];
+            if ($prefix >= 60 && $prefix < 66) $prefix = 60;
+            if ($prefix >= 66 && $prefix < 70) $prefix = 66;
+            $subtipo = 'Undefined';
+            switch ($prefix) {
+                case 60:
+                    $subtipo = 'Egresos';
+                    break;
+                case 66:
+                    $subtipo = 'Egresos Extraordinarios';
+                    break;
+            }
+            $egresos[$subtipo][] = $egreso;
+        }
+        if (empty($egresos)) {
+            return [];
+        } else {
+            return $egresos;
         }
     }
 }
