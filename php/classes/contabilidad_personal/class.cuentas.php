@@ -137,8 +137,8 @@ class Cuentas
                     break;
             }
             $cuentas[$tipo][] = [
-                'code' => $code,
-                'nombreCuenta' => $nombreCuenta,
+                'accountNumber' => $code,
+                'title' => $nombreCuenta,
             ];
         }
 
@@ -177,9 +177,21 @@ class Cuentas
     public function clasificarActivos($allActivos)
     {
         $activos = [];
+
+        $activos['AC Disponibles'] = [];
+        $activos['AC Inversiones Temporales'] = [];
+        $activos['AC Exigibles'] = [];
+        $activos['AC Realizables'] = [];
+        $activos['AC Diferidos'] = [];
+        $activos['ANC Exigibles>1año'] = [];
+        $activos['ANC Inversiones permanentes'] = [];
+        $activos['ANC Bienes de Uso'] = [];
+        $activos['ANC Intangibles'] = [];
+        $activos['ANC Gastos Dieferidos>1Año'] = [];
+
         foreach ($allActivos as $activo) {
             $subtipo = 'Undefined';
-            switch ($activo['code'][0] . $activo['code'][1]) {
+            switch ($activo['accountNumber'][0] . $activo['accountNumber'][1]) {
                 case 10:
                     $subtipo = 'AC Disponibles';
                     break;
@@ -222,8 +234,12 @@ class Cuentas
     public function clasificarPasivos($allPasivos)
     {
         $pasivos = [];
+
+        $pasivos['Pasivos corrientes'] = [];
+        $pasivos['Pasivos no corrientes'] = [];
+
         foreach ($allPasivos as $pasivo) {
-            $prefix = $pasivo['code'][0] . $pasivo['code'][1];
+            $prefix = $pasivo['accountNumber'][0] . $pasivo['accountNumber'][1];
             if ($prefix >= 20 && $prefix < 25) $prefix = 20;
             if ($prefix >= 25 && $prefix < 30) $prefix = 25;
             $subtipo = 'Undefined';
@@ -246,8 +262,14 @@ class Cuentas
     public function clasificarPatrimonio($allPatrimonio)
     {
         $patrimonioCuentas = [];
+
+        $patrimonioCuentas['Capital'] = [];
+        $patrimonioCuentas['Resultados'] = [];
+        $patrimonioCuentas['Reservas'] = [];
+        $patrimonioCuentas['Ajustes'] = [];
+
         foreach ($allPatrimonio as $patrimonio) {
-            $prefix = $patrimonio['code'][0] . $patrimonio['code'][1] . $patrimonio['code'][2];
+            $prefix = $patrimonio['accountNumber'][0] . $patrimonio['accountNumber'][1] . $patrimonio['accountNumber'][2];
             if ($prefix >= 300 && $prefix < 325) $prefix = 300;
             if ($prefix >= 325 && $prefix < 350) $prefix = 325;
             if ($prefix >= 350 && $prefix < 375) $prefix = 350;
@@ -278,8 +300,12 @@ class Cuentas
     public function clasificarIngresos($allIngresos)
     {
         $ingresos = [];
+
+        $ingresos['Ingresos'] = [];
+        $ingresos['Ingresos Extraordinarios'] = [];
+
         foreach ($allIngresos as $ingreso) {
-            $prefix = $ingreso['code'][0] . $ingreso['code'][1];
+            $prefix = $ingreso['accountNumber'][0] . $ingreso['accountNumber'][1];
             if ($prefix >= 40 && $prefix < 46) $prefix = 40;
             if ($prefix >= 46 && $prefix < 50) $prefix = 46;
             $subtipo = 'Undefined';
@@ -302,8 +328,12 @@ class Cuentas
     public function clasificarEgresos($allEgresos)
     {
         $egresos = [];
+
+        $egresos['Egresos'] = [];
+        $egresos['Egresos Extraordinarios'] = [];
+
         foreach ($allEgresos as $egreso) {
-            $prefix = $egreso['code'][0] . $egreso['code'][1];
+            $prefix = $egreso['accountNumber'][0] . $egreso['accountNumber'][1];
             if ($prefix >= 60 && $prefix < 66) $prefix = 60;
             if ($prefix >= 66 && $prefix < 70) $prefix = 66;
             $subtipo = 'Undefined';
